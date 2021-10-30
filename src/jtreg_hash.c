@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "hash_reg.h"
+#include <stdio.h>
 
 
 // add all unallocated to free list, does not update other meta
@@ -65,18 +66,36 @@ void add_to_free(jthash_t *hash, jthash_node_t *node)
     }
 }
 
-uint32_t count_free(jthash_t const *hash)
+uint32_t count_list(jthash_node_t *first)
 {
-    uint32_t cnt=0;
-    jthash_node_t *next = hash->free_list;
+    jthash_node_t *next = first;
+    uint32_t cnt=0;    
     while(next)
     {
         cnt++;
         if(next->next == next) break;
         next = next->next;
     }
+    return cnt;    
+}
+
+uint32_t count_free(jthash_t const *hash)
+{
+    return count_list(hash->free_list);
+}
+
+uint32_t count_hash(jthash_t const *hash)
+{
+    uint32_t cnt = 0;
+    for(int h=0; h < sizeof hash->storage.store/sizeof hash->storage.store[0]; h++)
+    {
+        uint32_t hcnt = count_list(hash->hash_table[h]);
+        cnt += hcnt;
+        printf("h%u->%u\n",h, hcnt);
+    }
     return cnt;
 }
+
 
 // the do_not_extend prevents future malloc calls
 jthash_t *jthash_init(jthash_t *hash, DoNotExtend_t do_not_extend)
@@ -242,10 +261,17 @@ jtval_t jthash_pop(jthash_t *hash, jtkey_t const *key)
     // find existing key if it exists
     jthash_node_t *node = jtfind_key(hash, key, &link_prev);
     jtval_t old_val;
-    if(node) // if already exists just update value
+    if(node) // node exists so remove it
     {
-        old_val = node->value;
-        *link_prev = node->next;    // remove from active list
+        old_val = node->value; // save value
+        if(node == node->next)  // last node in list
+        {
+            *link_prev = NULL;          // clear list
+        }
+        else
+        {
+            *link_prev = node->next;    // remove from active list
+        }
         add_to_free(hash, node);
         hash->items--;
     }

@@ -7,6 +7,7 @@
 // helper statics
 extern uint32_t count_free(jthash_t const *hash);
 extern jthash_ret_t add_extended(jthash_t *hash);
+uint32_t count_hash(jthash_t const *hash);
 
 void setUp(void)
 {
@@ -275,6 +276,7 @@ void test_jthash_pop(void)
     }
     TEST_ASSERT_EQUAL(items, my_hash.items);
     TEST_ASSERT_EQUAL(3*JT_HASH_STORAGE-items, count_free(&my_hash));
+    TEST_ASSERT_EQUAL(items, count_hash(&my_hash));
 
     for(int16_t i=items-1; i>=0; i--)
     {
@@ -286,5 +288,5 @@ void test_jthash_pop(void)
     }
     TEST_ASSERT_EQUAL(0, my_hash.items);
     TEST_ASSERT_EQUAL(3*JT_HASH_STORAGE, count_free(&my_hash));
-
+    TEST_ASSERT_EQUAL(0, count_hash(&my_hash));
 }
