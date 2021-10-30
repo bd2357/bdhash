@@ -1,0 +1,20 @@
+{
+    "files.associations": {
+        "sstream": "c",
+        "atomic": "c",
+        "*.tcc": "cpp",
+        "memory_resource": "cpp",
+        "istream": "cpp",
+        "streambuf": "cpp",
+        "tuple": "cpp",
+        "hashtable": "cpp",
+        "random": "cpp",
+        "optional": "c",
+        "ostream": "c",
+        "system_error": "c",
+        "array": "c",
+        "functional": "c",
+        "type_traits": "c",
+        "utility": "c"
+    }
+}
