@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-uint32_t make_jthash(void const *key, size_t keylen)
+uint32_t make_bdhash(void const *key, size_t keylen)
 {
     uint32_t hashval;
     uint8_t const *s = key;
@@ -10,13 +10,13 @@ uint32_t make_jthash(void const *key, size_t keylen)
     {
         hashval = *s + 31 * hashval;
     }
-    return hashval % JT_HASH_SIZE;
+    return hashval % BD_HASH_SIZE;
 }
 
-jtkey_t  package_jtkey(void const *key, size_t keylen)
+bdkey_t  package_bdkey(void const *key, size_t keylen)
 {
-    jtkey_t key_package = 
-        (jtkey_t){.len = keylen, .hash = make_jthash(key, keylen)};
+    bdkey_t key_package = 
+        (bdkey_t){.len = keylen, .hash = make_bdhash(key, keylen)};
     // if we can't store copy, store pointer
     if(keylen > sizeof(uintptr_t))
     {
@@ -29,7 +29,7 @@ jtkey_t  package_jtkey(void const *key, size_t keylen)
     return key_package;
 }
 
-uint8_t test_jtkey(jtkey_t const *keyref, void const *test_key_obj)
+uint8_t test_bdkey(bdkey_t const *keyref, void const *test_key_obj)
 {
     if(keyref)
     {
@@ -40,7 +40,7 @@ uint8_t test_jtkey(jtkey_t const *keyref, void const *test_key_obj)
     return 0;
 }
 
-uint8_t compare_jtkey(jtkey_t const* keyref1, jtkey_t const *keyref2)
+uint8_t compare_bdkey(bdkey_t const* keyref1, bdkey_t const *keyref2)
 {
     if(keyref1->hash != keyref2->hash) return 0;
     if(keyref1->len != keyref2->len) return 0;
