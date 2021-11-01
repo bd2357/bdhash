@@ -2,7 +2,10 @@
 
 #include "bdhash.h"
 #include <stdlib.h>
+#include "bdhash_node.h"
 #include "bdhash_key.h"
+#include "bdhash_value.h"
+
 
 // helper statics
 extern uint32_t count_free(bdhash_t const *hash);
@@ -58,14 +61,14 @@ void test_bdhash_clear_bad_config(void)
     my_hash.storage.next_extended = &temp;
     my_hash.last_storage = &my_hash.storage;
     bdhash_ret_t ret = bdhash_clear(&my_hash, 0);
-    TEST_ASSERT_EQUAL(BdhashError, ret.err);
+    TEST_ASSERT_EQUAL(BdhashError, ret.ret);
     TEST_ASSERT_EQUAL(3, ret.value);
 
     TEST_ASSERT_EQUAL_PTR(&my_hash, bdhash_init(&my_hash, 1) );
     my_hash.storage.next_extended = &temp;
     my_hash.last_storage = &temp;
     ret = bdhash_clear(&my_hash, 0);
-    TEST_ASSERT_EQUAL(BdhashError, ret.err);
+    TEST_ASSERT_EQUAL(BdhashError, ret.ret);
     TEST_ASSERT_EQUAL(6, ret.value);
 
     TEST_ASSERT_EQUAL_PTR(&my_hash, bdhash_init(&my_hash, 1) );
@@ -73,7 +76,7 @@ void test_bdhash_clear_bad_config(void)
     my_hash.last_storage = &temp;
     my_hash.extends = 3;
     ret = bdhash_clear(&my_hash, 0);
-    TEST_ASSERT_EQUAL(BdhashError, ret.err);
+    TEST_ASSERT_EQUAL(BdhashError, ret.ret);
     TEST_ASSERT_EQUAL(2, ret.value);
 
 }
@@ -81,7 +84,7 @@ void test_bdhash_clear_bad_config(void)
 void test_bdhash_clear_no_extended(void)
 {
     bdhash_t my_hash = (bdhash_t){0};
-    TEST_ASSERT_EQUAL(BdhashOk, bdhash_clear(&my_hash, BDH_KeepExtended).err);
+    TEST_ASSERT_EQUAL(BdhashOk, bdhash_clear(&my_hash, BDH_KeepExtended).ret);
     TEST_ASSERT_EQUAL_PTR(&my_hash.storage.store[BD_HASH_STORAGE-1], my_hash.free_list);
 }
 
@@ -98,7 +101,7 @@ void test_bdhash_clear_keep_extended(void)
     TEST_ASSERT_EQUAL(EXTENDS, my_hash.extends);
     TEST_ASSERT_EQUAL((EXTENDS+1)*BD_HASH_STORAGE, count_free(&my_hash));
 
-    TEST_ASSERT_EQUAL(BdhashOk, bdhash_clear(&my_hash, BDH_KeepExtended).err);
+    TEST_ASSERT_EQUAL(BdhashOk, bdhash_clear(&my_hash, BDH_KeepExtended).ret);
 
     TEST_ASSERT_EQUAL(EXTENDS, my_hash.extends);
     TEST_ASSERT_EQUAL((EXTENDS+1)*BD_HASH_STORAGE, count_free(&my_hash));
@@ -128,7 +131,7 @@ void test_bdhash_clear_free_extended(void)
     TEST_ASSERT_EQUAL(EXTENDS, my_hash.extends);
     TEST_ASSERT_EQUAL((EXTENDS+1)*BD_HASH_STORAGE, count_free(&my_hash));
 
-    TEST_ASSERT_EQUAL(BdhashOk, bdhash_clear(&my_hash, BDH_FreeExtended).err);
+    TEST_ASSERT_EQUAL(BdhashOk, bdhash_clear(&my_hash, BDH_FreeExtended).ret);
 
     TEST_ASSERT_EQUAL(0, my_hash.extends);
     TEST_ASSERT_EQUAL(BD_HASH_STORAGE, count_free(&my_hash));
@@ -147,7 +150,7 @@ void test_bdhash_set(void)
     for(uint16_t i=0; i<items; i++)
     {
         bdkey_t key = package_bdkey(&i, sizeof i);
-        TEST_ASSERT_EQUAL(BdhashNewKey, bdhash_set(&my_hash, &key, &(bdval_t){.val=i, sizeof i}).err);
+        TEST_ASSERT_EQUAL(BdhashNewKey, bdhash_set(&my_hash, &key, &(bdval_t){.val=i, sizeof i}).ret);
     }
     TEST_ASSERT_EQUAL(items, my_hash.items);
     TEST_ASSERT_EQUAL(BD_HASH_STORAGE-items, count_free(&my_hash));
@@ -155,7 +158,7 @@ void test_bdhash_set(void)
     for(uint16_t i=0; i<items; i++)
     {
         bdkey_t key = package_bdkey(&i, sizeof i);
-        TEST_ASSERT_EQUAL(BdhashOk, bdhash_set(&my_hash, &key, &(bdval_t){.val=i*i, sizeof i}).err);
+        TEST_ASSERT_EQUAL(BdhashOk, bdhash_set(&my_hash, &key, &(bdval_t){.val=i*i, sizeof i}).ret);
     }
     TEST_ASSERT_EQUAL(items, my_hash.items);
     TEST_ASSERT_EQUAL(BD_HASH_STORAGE-items, count_free(&my_hash));
@@ -164,7 +167,7 @@ void test_bdhash_set(void)
     {
         uint8_t k = i;
         bdkey_t key = package_bdkey(&k, sizeof k);
-        TEST_ASSERT_EQUAL(BdhashNewKey, bdhash_set(&my_hash, &key, &(bdval_t){.val=i*i, sizeof i}).err);
+        TEST_ASSERT_EQUAL(BdhashNewKey, bdhash_set(&my_hash, &key, &(bdval_t){.val=i*i, sizeof i}).ret);
     }
     TEST_ASSERT_EQUAL(items*2, my_hash.items);
     TEST_ASSERT_EQUAL(BD_HASH_STORAGE-items*2, count_free(&my_hash));    
@@ -190,7 +193,7 @@ void test_bdhash_update(void)
     for(uint8_t i=0; i<items; i++)
     {
         bdkey_t key = package_bdkey(&i, sizeof i);
-        TEST_ASSERT_EQUAL(BdhashNewKey, bdhash_set(&my_hash, &key, &(bdval_t){.val=i, sizeof i}).err);
+        TEST_ASSERT_EQUAL(BdhashNewKey, bdhash_set(&my_hash, &key, &(bdval_t){.val=i, sizeof i}).ret);
     }
     TEST_ASSERT_EQUAL(items, my_hash.items);
     TEST_ASSERT_EQUAL(BD_HASH_STORAGE-items, count_free(&my_hash));
@@ -239,7 +242,7 @@ void test_bdhash_get(void)
     {
         uint32_t big = i*i;
         bdkey_t key = package_bdkey(&big, sizeof big);
-        TEST_ASSERT_EQUAL(BdhashNewKey, bdhash_set(&my_hash, &key, &(bdval_t){.val=i*6, sizeof i}).err);
+        TEST_ASSERT_EQUAL(BdhashNewKey, bdhash_set(&my_hash, &key, &(bdval_t){.val=i*6, sizeof i}).ret);
     }
     TEST_ASSERT_EQUAL(items, my_hash.items);
     TEST_ASSERT_EQUAL(3*BD_HASH_STORAGE-items, count_free(&my_hash));
@@ -272,7 +275,7 @@ void test_bdhash_pop(void)
     {
         uint32_t big = i*i;
         bdkey_t key = package_bdkey(&big, sizeof big);
-        TEST_ASSERT_EQUAL(BdhashNewKey, bdhash_set(&my_hash, &key, &(bdval_t){.val=i*6, sizeof i}).err);
+        TEST_ASSERT_EQUAL(BdhashNewKey, bdhash_set(&my_hash, &key, &(bdval_t){.val=i*6, sizeof i}).ret);
     }
     TEST_ASSERT_EQUAL(items, my_hash.items);
     TEST_ASSERT_EQUAL(3*BD_HASH_STORAGE-items, count_free(&my_hash));

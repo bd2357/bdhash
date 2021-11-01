@@ -2,9 +2,29 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "bdhash_key.h"
+#include "bdhash_node.h"
 #include <stdio.h>
 
+
+void __attribute__((weak)) *bdhash_malloc(size_t size)
+{
+#ifdef BD_HASH_STATIC // no dynamic memory
+    (void)size;
+    return NULL;
+#else
+    return malloc(size);
+#endif
+}
+
+void __attribute__((weak)) bdhash_free(void *obj)
+{
+#ifdef BD_HASH_STATIC // no dynamic memory
+    (void)obj;
+#else
+    free(obj);
+#endif
+    return;
+}
 
 // add all unallocated to free list, does not update other meta
 void add_extend_to_free(bdhash_t *hash, bdhash_extend_t *store)
@@ -44,12 +64,13 @@ bdhash_ret_t add_extended(bdhash_t *hash)
 {
     if(!hash->do_not_extend)
     {
-        bdhash_extend_t *new_ext = calloc(1, sizeof(bdhash_extend_t));
-        if(!new_ext) return (bdhash_ret_t){.err=BdhashMemoryError};
-        add_extend_to_hash(hash, new_ext);
-        return (bdhash_ret_t){.err=BdhashOk, .value=hash->extends};
+        bdhash_extend_t *new_ext = bdhash_malloc(sizeof(bdhash_extend_t));
+        if(!new_ext) return (bdhash_ret_t){.ret=BdhashMemoryError};
+        *new_ext = (bdhash_extend_t){0};
+        add_extend_to_hash(hash, new_ext); 
+        return (bdhash_ret_t){.ret=BdhashOk, .value=hash->extends};
     }
-    return (bdhash_ret_t){.err=BdhashMemoryError};
+    return (bdhash_ret_t){.ret=BdhashMemoryError};
 }
 
 void add_to_free(bdhash_t *hash, bdhash_node_t *node)
@@ -106,7 +127,7 @@ bdhash_t *bdhash_init(bdhash_t *hash, DoNotExtend_t do_not_extend)
 {
     if(!hash) // if not provided, allocate one
     {
-        hash = malloc(sizeof(bdhash_t));
+        hash = bdhash_malloc(sizeof(bdhash_t));
         if(!hash) return NULL;
     }
 
@@ -124,7 +145,7 @@ bdhash_ret_t bdhash_clear(bdhash_t *hash, FreeExtParm_t free_extended)
     // if last storage, last link should be null
     if(last_storage && last_storage->next_extended) // internal error
     {
-        return (bdhash_ret_t){.err=BdhashError, .value=3};
+        return (bdhash_ret_t){.ret=BdhashError, .value=3};
     }
     // now clear all the hash bins and local store preserving the do_not_extend
     bdhash_init(hash, hash->do_not_extend);
@@ -140,13 +161,13 @@ bdhash_ret_t bdhash_clear(bdhash_t *hash, FreeExtParm_t free_extended)
     
         if(++found > extends) // internal error
         {
-            return (bdhash_ret_t){.err=BdhashError, .value=6};
+            return (bdhash_ret_t){.ret=BdhashError, .value=6};
         }
 
         if(free_extended)
         {
             next_extended->next_extended = NULL; // break link just in case
-            free(next_extended);
+            bdhash_free(next_extended);
         }
         else // keep the block but clear it and then relink
         {
@@ -158,11 +179,11 @@ bdhash_ret_t bdhash_clear(bdhash_t *hash, FreeExtParm_t free_extended)
     }
     if(found != extends) // internal error
     {
-        return (bdhash_ret_t){.err=BdhashError, .value=2};
+        return (bdhash_ret_t){.ret=BdhashError, .value=2};
     }
 
     // return current capicity
-    return (bdhash_ret_t){.value = BD_HASH_STORAGE * (hash->extends + 1), .err=BdhashOk};
+    return (bdhash_ret_t){.value = BD_HASH_STORAGE * (hash->extends + 1), .ret=BdhashOk};
 }
 
 bdhash_node_t *bdfind_key(bdhash_t *hash, bdkey_t const *key, bdhash_node_t ***prev)
@@ -208,9 +229,9 @@ bdhash_ret_t bdhash_set(bdhash_t *hash, bdkey_t const *key, bdval_t const *value
         }
         else 
         {
-            if(add_extended(hash).err)
+            if(add_extended(hash).ret)
             {
-                return (bdhash_ret_t){.err = BdhashMemoryError};
+                return (bdhash_ret_t){.ret = BdhashMemoryError};
             }
             node = hash->free_list;
             hash->free_list = hash->free_list->next;
@@ -220,7 +241,7 @@ bdhash_ret_t bdhash_set(bdhash_t *hash, bdkey_t const *key, bdval_t const *value
         node->next = node;  // self ref is list terminator
         *link_prev = node;  // hook into hash list
         hash->items++;
-        return (bdhash_ret_t){.value = (uintptr_t)node, .err=BdhashNewKey};
+        return (bdhash_ret_t){.value = (uintptr_t)node, .ret=BdhashNewKey};
     }
     return (bdhash_ret_t){.value = (uintptr_t)node};
 }

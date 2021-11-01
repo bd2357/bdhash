@@ -3,12 +3,12 @@
 
 #include <stdint.h>
 #include <stddef.h>
+// forward references
+typedef struct bdkey_t bdkey_t;
+typedef struct bdval_t bdval_t;
+typedef struct bdhash_t bdhash_t;
 
-// pick from some prime or app specific like
-// 79, 101, 199, 443, 1019, ....
-#define BD_HASH_SIZE 101    // first level hash size
-#define BD_HASH_STORAGE (BD_HASH_SIZE)
-
+// possible error messages (negative values)
 typedef enum bdhash_error_t
 {
     BdhashError = -4,
@@ -18,78 +18,29 @@ typedef enum bdhash_error_t
     BdhashOk = 0,
 } bdhash_error_t;
 
-typedef struct bdkey_t
-{
-    uintptr_t key;  // the original key or pointer to it
-    uint32_t len;   // the len of the key (test against sizeof uintptr_t)
-    uint32_t hash;  // the hash of the key
-} bdkey_t;
-// test instance of key for type
-#define GET_KEY_MEM(key_instance) \
-(((key_instance).len <= sizeof (key_instance).key) ? \
-    &(key_instance).key : \
-    (void const *)((key_instance).key) )
-
-// generic container holding value or reference based on len
-typedef struct bdval_t
-{
-    uintptr_t val;  // the original val or pointer to it
-    int32_t len;   // the len of the val (test against sizeof uintptr_t)
-} bdval_t;
-
-
+// General return value 
 typedef struct bdhash_ret_t
 {
-    uintptr_t value;    // the value
-    bdhash_error_t err; // 0 for normal 
+    uintptr_t value; // the value or pointer to value based on len
+    int32_t ret;     // Neg error or pos length 
 } bdhash_ret_t;
 
-typedef struct bdhash_node_t
-{
-    struct bdhash_node_t *next; // next in chain
-    bdkey_t key;              // actual key or pointer to key
-    bdval_t value;            // actual value or pointer to item
-} bdhash_node_t;
+// pick from some prime or app specific like
+// 79, 101, 199, 443, 1019, ....
+#define BD_HASH_SIZE 101    // first level hash size
+#define BD_HASH_STORAGE (BD_HASH_SIZE)
+// default behaviour of extendable memory
+// is currently to allow, cmd line -D can also switch
+#ifndef BD_HASH_STATIC 
+// #define BD_HASH_STATIC 
+#endif
 
-// storage for actual key/values or their references
-typedef struct bdhash_extend_t
-{
-    struct bdhash_extend_t *next_extended;
-    bdhash_node_t store[BD_HASH_STORAGE];
-} bdhash_extend_t;
-
-typedef struct bdhash_t
-{
-    bdhash_node_t *hash_table[BD_HASH_SIZE]; // the first level table
-    bdhash_extend_t storage;                 // the first storage area
-    bdhash_extend_t *last_storage;           // pnt to last added storage
-    bdhash_node_t *free_list;  // pointer to next known free storage node
-    uint32_t items;   // count of stored items
-    uint32_t extends; // number of bdhash_extend_t blocks allocated
-    uint8_t do_not_extend; // prevent malloc call
-} bdhash_t;
-// hash is full when either
-#define HASH_FULL(hashP) \
-  ((hashP)->free_list == NULL || \
-   (((hashP)->extends+1)*BD_HASH_STORAGE)==(hashP)->items)
-
-typedef struct bdhash_32_t
-{
-    bdhash_node_t node;
-} bdhash_32_t;
-
-typedef struct bdhash_str_t
-{
-    bdhash_node_t node;
-} bdhash_str_t;
-
-typedef struct bdhash_obj_t
-{
-    bdhash_node_t node;
-} bdhash_obj_t;
-
-
-
+/**
+ * These are used to manage memory allocation and can be
+ * overridden by user to provide user unique memory management
+ */ 
+void __attribute__((weak)) *bdhash_malloc(size_t size);
+void __attribute__((weak)) bdhash_free(void *obj);
 
 /**
  * @brief init a bdhash_t structure, if null create one on the heap
